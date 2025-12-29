@@ -1,0 +1,622 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Headline Flicker Editor (keyword-locked)</title>
+
+  <!-- Bootstrap -->
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+    integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+    crossorigin="anonymous"
+  />
+
+  <style>
+    :root{
+      --stage-bg: #0b0b0e;
+      --stage-fg: #f2f2f2;
+      --kw-fg: #ffffff;
+      --kw-bg: rgba(255, 255, 255, 0.12);
+      --fade-ms: 60ms;
+    }
+
+    body { background: #f8f9fa; }
+
+    /* Top area reserved for recording */
+    #stageWrapper{
+      background: var(--stage-bg);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+
+    #stage{
+      position: relative;
+      width: 100%;
+      height: 58vh;         /* reserved canvas area */
+      min-height: 360px;    /* keeps it usable on smaller screens */
+      overflow: hidden;
+      color: var(--stage-fg);
+    }
+
+    /* Optional subtle vignette/noise inside stage only */
+    #stage::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(ellipse at center, rgba(255,255,255,0.06), rgba(0,0,0,0) 55%),
+        radial-gradient(ellipse at center, rgba(0,0,0,0) 40%, rgba(0,0,0,0.55));
+      mix-blend-mode: overlay;
+    }
+
+    .headline {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      display: inline-block;
+
+      white-space: nowrap;
+      line-height: 1.05;
+      text-rendering: geometricPrecision;
+      user-select: none;
+
+      will-change: transform, opacity;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity var(--fade-ms) linear;
+    }
+
+    .kw {
+      color: var(--kw-fg);
+      background: var(--kw-bg);
+      padding: 0.06em 0.14em;
+      border-radius: 0.12em;
+    }
+
+    /* Keep editor area visually separate */
+    #editorWrapper{
+      background: #f8f9fa;
+    }
+
+    textarea.code-like{
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      line-height: 1.35;
+      white-space: pre;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- RESERVED RECORDING AREA (TOP) -->
+  <div id="stageWrapper" class="container-fluid p-0">
+    <div id="stage">
+      <h1 id="headlineA" class="headline"></h1>
+      <h1 id="headlineB" class="headline"></h1>
+    </div>
+  </div>
+
+  <!-- EDITOR (BOTTOM) -->
+  <div id="editorWrapper" class="container-fluid py-3">
+    <div class="row g-3">
+      <div class="col-12">
+        <div class="d-flex flex-wrap gap-3 align-items-end">
+          <div>
+            <label class="form-label mb-1" for="keywordInput">Keyword</label>
+            <input id="keywordInput" class="form-control" type="text" value="AI" />
+          </div>
+
+          <div>
+            <label class="form-label mb-1" for="fpsInput">FPS</label>
+            <input id="fpsInput" class="form-control" type="number" min="1" max="60" step="1" value="15" />
+          </div>
+
+          <div>
+            <label class="form-label mb-1" for="fadeInput">Crossfade (ms)</label>
+            <input id="fadeInput" class="form-control" type="number" min="0" max="500" step="10" value="60" />
+          </div>
+
+          <div>
+            <label class="form-label mb-1" for="stageHeightInput">Stage height (vh)</label>
+            <input id="stageHeightInput" class="form-control" type="number" min="20" max="90" step="1" value="58" />
+          </div>
+
+          <div class="form-check form-switch mb-1">
+            <input class="form-check-input" type="checkbox" role="switch" id="randomToggle" checked>
+            <label class="form-check-label" for="randomToggle">Random order</label>
+          </div>
+
+          <div class="form-check form-switch mb-1">
+            <input class="form-check-input" type="checkbox" role="switch" id="pauseToggle">
+            <label class="form-check-label" for="pauseToggle">Paused</label>
+          </div>
+
+          <div class="form-check form-switch mb-1">
+            <input class="form-check-input" type="checkbox" role="switch" id="themeToggle">
+            <label class="form-check-label" for="themeToggle">White stage</label>
+          </div>
+
+          <button id="rerollBtn" class="btn btn-primary mb-1" type="button">
+            Reroll now
+          </button>
+
+          <button id="resetBtn" class="btn btn-outline-secondary mb-1" type="button">
+            Reset defaults
+          </button>
+        </div>
+      </div>
+
+      <!-- Textareas (each line is one option) -->
+      <div class="col-12 col-lg-6">
+        <div class="card shadow-sm">
+          <div class="card-header fw-semibold">Headlines (one per line)</div>
+          <div class="card-body">
+            <textarea id="headlinesTA" class="form-control code-like" rows="12">AI boom fuels record demand for data center chips
+Regulators question how AI models source training data
+Hospitals pilot AI triage tools to reduce waiting times
+Artists protest as AI image generators reshape workflows
+Investors bet big on AI assistants for enterprise support
+Schools rewrite exam rules after AI tools go mainstream
+Startups promise faster research with AI lab copilots
+Cybersecurity teams deploy AI to spot anomalous logins
+Courts weigh whether AI-written briefs need disclosure
+Sports broadcasters use AI to automate highlight reels
+Insurance firms test AI to accelerate claims processing
+City planners explore AI for traffic signal optimization
+Airlines use AI to predict maintenance before failures
+Banks adopt AI to detect fraud in real time
+Retailers turn to AI for inventory and demand forecasting
+Farmers embrace AI drones to monitor crop health
+EU negotiators debate new safeguards for AI systems
+Medical researchers use AI to find new drug candidates
+Filmmakers experiment with AI voice cloning on set
+Journalists confront AI-generated misinformation campaigns
+Lawmakers push for audits of high-impact AI decisions
+Consumers ask whether AI features justify higher prices
+Robotics firms pair AI vision with cheaper sensors
+Telecom providers add AI agents to customer call centers
+New study measures energy cost of training AI models
+Publishers negotiate licensing deals for AI training rights
+Developers demand clearer guidance on safe AI deployment
+Military contractors market AI analytics for surveillance
+Scientists warn about overreliance on AI predictions
+Climate teams use AI to improve extreme weather modeling</textarea>
+            <div class="form-text">Keyword alignment is done by measuring the first matched keyword and translating the headline so the keyword is centered.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-lg-6">
+        <div class="row g-3">
+          <div class="col-12">
+            <div class="card shadow-sm">
+              <div class="card-header fw-semibold">Font families (one per line)</div>
+              <div class="card-body">
+                <textarea id="familiesTA" class="form-control code-like" rows="6">Georgia, "Times New Roman", Times, serif
+"Times New Roman", Times, serif
+"Palatino Linotype", Palatino, serif
+Garamond, "EB Garamond", serif
+"Helvetica Neue", Helvetica, Arial, sans-serif
+Arial, Helvetica, sans-serif
+"Gill Sans", "Gill Sans MT", Calibri, sans-serif
+Verdana, Geneva, sans-serif
+"Trebuchet MS", "Segoe UI", sans-serif
+"Impact", Haettenschweiler, "Arial Narrow Bold", sans-serif
+"Courier New", Courier, monospace
+ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif</textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12 col-md-6">
+            <div class="card shadow-sm h-100">
+              <div class="card-header fw-semibold">Font weights</div>
+              <div class="card-body">
+                <textarea id="weightsTA" class="form-control code-like" rows="6">300
+400
+500
+600
+700
+800
+900</textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12 col-md-6">
+            <div class="card shadow-sm h-100">
+              <div class="card-header fw-semibold">Font styles</div>
+              <div class="card-body">
+                <textarea id="stylesTA" class="form-control code-like" rows="6">normal
+italic</textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12 col-md-6">
+            <div class="card shadow-sm h-100">
+              <div class="card-header fw-semibold">Font sizes (px)</div>
+              <div class="card-body">
+                <textarea id="sizesTA" class="form-control code-like" rows="6">44
+48
+52
+56
+60
+66
+72
+80</textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12 col-md-6">
+            <div class="card shadow-sm h-100">
+              <div class="card-header fw-semibold">Letter spacing</div>
+              <div class="card-body">
+                <textarea id="spacingTA" class="form-control code-like" rows="6">-0.06em
+-0.03em
+-0.01em
+0em
+0.02em
+0.05em</textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12">
+            <div class="card shadow-sm">
+              <div class="card-header fw-semibold">Text transform</div>
+              <div class="card-body">
+                <textarea id="transformTA" class="form-control code-like" rows="4">none
+uppercase
+capitalize</textarea>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    /********************
+     * State + Defaults
+     ********************/
+    const DEFAULTS = {
+      keyword: "AI",
+      fps: 15,
+      fadeMs: 60,
+      stageVh: 58,
+      randomOrder: true,
+      paused: false,
+      whiteStage: false
+    };
+
+    const stage = document.getElementById("stage");
+    const a = document.getElementById("headlineA");
+    const b = document.getElementById("headlineB");
+
+    let front = a;
+    let back = b;
+
+    const ui = {
+      keywordInput: document.getElementById("keywordInput"),
+      fpsInput: document.getElementById("fpsInput"),
+      fadeInput: document.getElementById("fadeInput"),
+      stageHeightInput: document.getElementById("stageHeightInput"),
+      randomToggle: document.getElementById("randomToggle"),
+      pauseToggle: document.getElementById("pauseToggle"),
+      themeToggle: document.getElementById("themeToggle"),
+      rerollBtn: document.getElementById("rerollBtn"),
+      resetBtn: document.getElementById("resetBtn"),
+
+      headlinesTA: document.getElementById("headlinesTA"),
+      familiesTA: document.getElementById("familiesTA"),
+      weightsTA: document.getElementById("weightsTA"),
+      stylesTA: document.getElementById("stylesTA"),
+      sizesTA: document.getElementById("sizesTA"),
+      spacingTA: document.getElementById("spacingTA"),
+      transformTA: document.getElementById("transformTA"),
+    };
+
+    const state = {
+      keyword: DEFAULTS.keyword,
+      fps: DEFAULTS.fps,
+      fadeMs: DEFAULTS.fadeMs,
+      stageVh: DEFAULTS.stageVh,
+      randomOrder: DEFAULTS.randomOrder,
+      paused: DEFAULTS.paused,
+      whiteStage: DEFAULTS.whiteStage,
+
+      headlines: [],
+      fontFamilies: [],
+      fontWeights: [],
+      fontStyles: [],
+      fontSizesPx: [],
+      letterSpacing: [],
+      textTransform: []
+    };
+
+    /********************
+     * Helpers
+     ********************/
+    const pick = (arr) => arr[(Math.random() * arr.length) | 0];
+
+    function parseLines(text) {
+      return text
+        .split(/\r?\n/)
+        .map(s => s.trim())
+        .filter(Boolean);
+    }
+
+    function parseNumbers(text) {
+      return parseLines(text)
+        .map(x => Number(x))
+        .filter(n => Number.isFinite(n));
+    }
+
+    function escapeHTML(s) {
+      return s
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function escapeRegExp(s) {
+      return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
+
+    function headlineToHTML(text, keyword) {
+      const re = new RegExp(`\\b${escapeRegExp(keyword)}\\b`, "gi");
+      let out = "";
+      let last = 0;
+      let first = true;
+      let m;
+
+      while ((m = re.exec(text)) !== null) {
+        out += escapeHTML(text.slice(last, m.index));
+        const cls = first ? "kw anchor" : "kw";
+        out += `<span class="${cls}">${escapeHTML(m[0])}</span>`;
+        first = false;
+        last = m.index + m[0].length;
+      }
+      out += escapeHTML(text.slice(last));
+
+      // fallback: substring match
+      if (out === escapeHTML(text) && keyword) {
+        const idx = text.toLowerCase().indexOf(keyword.toLowerCase());
+        if (idx >= 0) {
+          const before = escapeHTML(text.slice(0, idx));
+          const mid = escapeHTML(text.slice(idx, idx + keyword.length));
+          const after = escapeHTML(text.slice(idx + keyword.length));
+          out = `${before}<span class="kw anchor">${mid}</span>${after}`;
+        }
+      }
+      return out;
+    }
+
+    function applyRandomTypography(el) {
+      const fam = state.fontFamilies.length ? pick(state.fontFamilies) : 'system-ui, sans-serif';
+      const w   = state.fontWeights.length ? String(pick(state.fontWeights)) : "700";
+      const st  = state.fontStyles.length ? pick(state.fontStyles) : "normal";
+      const sz  = state.fontSizesPx.length ? pick(state.fontSizesPx) : 64;
+      const sp  = state.letterSpacing.length ? pick(state.letterSpacing) : "0em";
+      const tr  = state.textTransform.length ? pick(state.textTransform) : "none";
+
+      el.style.fontFamily = fam;
+      el.style.fontWeight = w;
+      el.style.fontStyle = st;
+      el.style.fontSize = sz + "px";
+      el.style.letterSpacing = sp;
+      el.style.textTransform = tr;
+    }
+
+    function setStageTheme(white) {
+      if (white) {
+        document.documentElement.style.setProperty("--stage-bg", "#ffffff");
+        document.documentElement.style.setProperty("--stage-fg", "#111214");
+        document.documentElement.style.setProperty("--kw-fg", "#111214");
+        document.documentElement.style.setProperty("--kw-bg", "rgba(0, 0, 0, 0.10)");
+      } else {
+        document.documentElement.style.setProperty("--stage-bg", "#0b0b0e");
+        document.documentElement.style.setProperty("--stage-fg", "#f2f2f2");
+        document.documentElement.style.setProperty("--kw-fg", "#ffffff");
+        document.documentElement.style.setProperty("--kw-bg", "rgba(255, 255, 255, 0.12)");
+      }
+    }
+
+    function applyGlobals() {
+      document.documentElement.style.setProperty("--fade-ms", `${Math.max(0, state.fadeMs)}ms`);
+      stage.style.height = `${Math.max(20, Math.min(90, state.stageVh))}vh`;
+      setStageTheme(state.whiteStage);
+    }
+
+    function nextHeadline() {
+      if (!state.headlines.length) return `${state.keyword} headline`;
+      if (state.randomOrder) return state.headlines[(Math.random() * state.headlines.length) | 0];
+      nextHeadline._i = (nextHeadline._i ?? 0) + 1;
+      return state.headlines[(nextHeadline._i - 1) % state.headlines.length];
+    }
+
+    /********************
+     * Double-buffered render (no pre-move flash, no dark frames)
+     ********************/
+    function renderBuffered(text) {
+      const keyword = state.keyword || "";
+
+      // Prepare back (hidden but measurable)
+      back.style.transition = "none";
+      back.style.opacity = "0";
+      back.style.visibility = "hidden";
+      back.style.transform = "translate(-50%, -50%)";
+      back.innerHTML = headlineToHTML(text, keyword);
+      applyRandomTypography(back);
+
+      requestAnimationFrame(() => {
+        // Measure & align keyword while still hidden
+        const anchor = back.querySelector(".anchor") || back.querySelector(".kw");
+        if (anchor) {
+          const stageRect = stage.getBoundingClientRect();
+          const kwRect = anchor.getBoundingClientRect();
+
+          const stageCx = stageRect.left + stageRect.width / 2;
+          const stageCy = stageRect.top + stageRect.height / 2;
+          const kwCx = kwRect.left + kwRect.width / 2;
+          const kwCy = kwRect.top + kwRect.height / 2;
+
+          const dx = stageCx - kwCx;
+          const dy = stageCy - kwCy;
+
+          back.style.transform =
+            `translate(-50%, -50%) translate(${dx.toFixed(2)}px, ${dy.toFixed(2)}px)`;
+        }
+
+        // Reveal back then fade out front; hide old only after transition ends
+        requestAnimationFrame(() => {
+          back.style.transition = "";
+          back.style.visibility = "visible";
+          back.style.opacity = "1";
+
+          // Keep front visible until back is visible => no dark frames
+          front.style.opacity = "0";
+
+          const oldFront = front;
+          const newFront = back;
+
+          oldFront.addEventListener("transitionend", () => {
+            oldFront.style.visibility = "hidden";
+          }, { once: true });
+
+          front = newFront;
+          back = oldFront;
+        });
+      });
+    }
+
+    /********************
+     * UI -> State
+     ********************/
+    function refreshArraysFromUI() {
+      state.headlines     = parseLines(ui.headlinesTA.value);
+      state.fontFamilies  = parseLines(ui.familiesTA.value);
+      state.fontWeights   = parseNumbers(ui.weightsTA.value);
+      state.fontStyles    = parseLines(ui.stylesTA.value);
+      state.fontSizesPx   = parseNumbers(ui.sizesTA.value);
+      state.letterSpacing = parseLines(ui.spacingTA.value);
+      state.textTransform = parseLines(ui.transformTA.value);
+    }
+
+    function refreshSettingsFromUI() {
+      state.keyword     = ui.keywordInput.value.trim();
+      state.fps         = Math.max(1, Math.min(60, Number(ui.fpsInput.value) || DEFAULTS.fps));
+      state.fadeMs      = Math.max(0, Math.min(500, Number(ui.fadeInput.value) || DEFAULTS.fadeMs));
+      state.stageVh     = Math.max(20, Math.min(90, Number(ui.stageHeightInput.value) || DEFAULTS.stageVh));
+      state.randomOrder = !!ui.randomToggle.checked;
+      state.paused      = !!ui.pauseToggle.checked;
+      state.whiteStage  = !!ui.themeToggle.checked;
+
+      applyGlobals();
+    }
+
+    function setUIToDefaults() {
+      ui.keywordInput.value = DEFAULTS.keyword;
+      ui.fpsInput.value = DEFAULTS.fps;
+      ui.fadeInput.value = DEFAULTS.fadeMs;
+      ui.stageHeightInput.value = DEFAULTS.stageVh;
+      ui.randomToggle.checked = DEFAULTS.randomOrder;
+      ui.pauseToggle.checked = DEFAULTS.paused;
+      ui.themeToggle.checked = DEFAULTS.whiteStage;
+
+      // Textareas are already hardcoded in HTML; no need to overwrite them here.
+      refreshArraysFromUI();
+      refreshSettingsFromUI();
+      renderBuffered(nextHeadline());
+    }
+
+    // small debounce for textarea edits
+    function debounce(fn, ms) {
+      let t = 0;
+      return (...args) => {
+        clearTimeout(t);
+        t = setTimeout(() => fn(...args), ms);
+      };
+    }
+
+    const onTextAreasChanged = debounce(() => {
+      refreshArraysFromUI();
+      renderBuffered(nextHeadline());
+    }, 120);
+
+    /********************
+     * Animation loop
+     ********************/
+    let last = performance.now();
+    let acc = 0;
+
+    function tick(now) {
+      const frameMs = 1000 / Math.max(1, state.fps);
+      const dt = now - last;
+      last = now;
+      if (!state.paused) acc += dt;
+
+      while (!state.paused && acc >= frameMs) {
+        acc -= frameMs;
+        renderBuffered(nextHeadline());
+      }
+      requestAnimationFrame(tick);
+    }
+
+    /********************
+     * Wire up events
+     ********************/
+    ui.keywordInput.addEventListener("input", () => { refreshSettingsFromUI(); renderBuffered(nextHeadline()); });
+    ui.fpsInput.addEventListener("input", refreshSettingsFromUI);
+    ui.fadeInput.addEventListener("input", refreshSettingsFromUI);
+    ui.stageHeightInput.addEventListener("input", () => { refreshSettingsFromUI(); renderBuffered(front.textContent || nextHeadline()); });
+
+    ui.randomToggle.addEventListener("change", refreshSettingsFromUI);
+    ui.pauseToggle.addEventListener("change", refreshSettingsFromUI);
+    ui.themeToggle.addEventListener("change", () => { refreshSettingsFromUI(); renderBuffered(front.textContent || nextHeadline()); });
+
+    ui.rerollBtn.addEventListener("click", () => renderBuffered(nextHeadline()));
+
+    ui.resetBtn.addEventListener("click", () => {
+      // keep hardcoded textarea contents; just reset the inputs/toggles
+      setUIToDefaults();
+    });
+
+    ui.headlinesTA.addEventListener("input", onTextAreasChanged);
+    ui.familiesTA.addEventListener("input", onTextAreasChanged);
+    ui.weightsTA.addEventListener("input", onTextAreasChanged);
+    ui.stylesTA.addEventListener("input", onTextAreasChanged);
+    ui.sizesTA.addEventListener("input", onTextAreasChanged);
+    ui.spacingTA.addEventListener("input", onTextAreasChanged);
+    ui.transformTA.addEventListener("input", onTextAreasChanged);
+
+    window.addEventListener("resize", () => {
+      renderBuffered(front.textContent || nextHeadline());
+    });
+
+    /********************
+     * Init
+     ********************/
+    refreshArraysFromUI();
+    refreshSettingsFromUI();
+    renderBuffered(nextHeadline());
+    requestAnimationFrame(tick);
+  </script>
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+    crossorigin="anonymous"
+  ></script>
+</body>
+</html>
