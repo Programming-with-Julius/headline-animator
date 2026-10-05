@@ -1,39 +1,51 @@
-[Fully vibe-coded, does not reflect me as a developer]
+# Headline Animator
 
-# headline-animator
+A small browser tool for fast headline montages. The words, fonts, and styling change while one shared keyword stays centered, giving the animation a steady focal point.
 
-Live demo: https://programming-with-julius.github.io/headline-animator/
+**[Try the live editor](https://programming-with-julius.github.io/headline-animator/)** · **[Watch the video](https://www.youtube.com/watch?v=qEwmR20Ss9Y)**
 
-`headline-animator` is a single-file HTML tool that recreates a rapid “headline flicker” effect where many different headlines share a single keyword (e.g. `AI`). Each frame is rendered with a different typographic preset, but the keyword is always positioned at the same spot on screen (centered) by measuring the keyword’s bounding box and translating the whole headline accordingly.
+![Headline Animator showing an AI headline on a black stage with the keyword, timing, and headline-list controls below.](docs/headline-animator.jpg)
 
-To avoid visible jumps or dark frames, the animation uses a double-buffer approach: the next headline is laid out and aligned while hidden, then crossfaded in while the previous frame fades out.
+*A paused demo frame: “AI” remains at the center while the surrounding headlines can change.*
 
-## Features
+## Made for the video
 
-- Keyword-locked positioning (the shared keyword is centered every frame)
-- Rapid cycling at a configurable FPS
-- Double-buffered crossfade to prevent flashes/jitter
-- Editable lists for:
-  - headlines
-  - font families
-  - weights, styles, sizes
-  - letter spacing and text transform
-- Controls for FPS, crossfade duration, random vs sequential order, pause
-- Black/white stage toggle
-- Stage area is reserved at the top so you can screen-record clean output
+This tool was made for **[Neural Network in ChatGPT](https://www.youtube.com/watch?v=qEwmR20Ss9Y)** by Programming with Julius. The opening calls for rapidly switching headlines with **AI** held in focus before introducing ChatGPT.
 
-## Usage
+The video explores whether a language model can carry out the mathematics of another neural network. It starts with a ChatGPT-powered calculator, then trains a PyTorch model on MNIST handwritten digits and extracts its forward pass into mathematical expressions. Each 28 × 28 image supplies 784 pixel values, and ten output expressions correspond to the digits 0–9. The experiment breaks the calculations into smaller pieces for ChatGPT and compares the resulting predictions with PyTorch.
 
-1. Open the live demo link above, or open `index.html` locally in a browser.
-2. Edit the options in the textareas (one option per line) and tweak the numeric inputs/toggles.
-3. Record only the top stage area for clean captures.
+## What you can make
 
-## How it works (high level)
+- A rapid sequence of headlines with the first matching keyword centered in every frame.
+- Different typography for each frame, using editable font families, weights, styles, sizes, letter spacing, and text transforms.
+- Random or sequential headline order, with adjustable FPS and crossfade duration.
+- A black or white stage with a configurable height, ready for screen recording.
+- A paused frame for checking alignment, with **Reroll now** to preview another combination.
 
-- The current headline string is converted into HTML where the first keyword match is wrapped in a dedicated `.anchor` span.
-- The next frame is rendered into a hidden layer (back buffer), measured, and translated so the `.anchor` is centered in the stage.
-- Once positioned, the back buffer is made visible and crossfaded in while the front buffer fades out.
+The headline text is editable demo content. Replace it with the wording you want to use in your own video.
 
-## License
+## Using it
 
-MIT. See `LICENSE`.
+1. Open the [live editor](https://programming-with-julius.github.io/headline-animator/), or open [`index.html`](index.html) in a browser.
+2. Set **Keyword** and enter your **Headlines**, one per line. Include the keyword in each headline you want to align.
+3. Edit the typography lists below the stage. Each line is one available option.
+4. Adjust **FPS**, **Crossfade (ms)**, and **Stage height (vh)**. Toggle **Random order**, **Paused**, or **White stage** as needed.
+5. Screen-record the top stage area for a clean montage. Use **Reset defaults** to start over.
+
+There is no build step or application server. The implementation lives in a single HTML file; the editor styling uses Bootstrap from a CDN.
+
+## How the alignment works
+
+The first keyword match is wrapped in an anchor span. The next headline is laid out in a hidden layer, its keyword position is measured, and the whole line is translated until that keyword sits at the stage center. The two layers then crossfade, avoiding a blank frame between headlines.
+
+Long headlines or large fonts can extend beyond the stage. Use **Paused** to check the framing before recording.
+
+## Companion tool
+
+[`network-animator`](https://github.com/Programming-with-Julius/network-animator) creates glowing neural-network diagrams for the same production workflow.
+
+## Project note and license
+
+> Fully vibe-coded, does not reflect me as a developer.
+
+MIT. See [`LICENSE`](LICENSE).
